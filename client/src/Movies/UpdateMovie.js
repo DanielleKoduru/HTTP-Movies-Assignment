@@ -1,53 +1,55 @@
 import React, { useState, useEffect } from "react";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 
 const initialItem = {
-    id: 0,
     title: "",
     director: "",
-    metascore: "",
-    stars: [],
+    metascore: 0,
+    stars: []
 }
 
 
-function UpdateMovie(props) {
-    const { push } = useHistory();
+export const UpdateMovie = (props) => {
     const [item, setItem] = useState(initialItem);
-    const { id } = useParams();
+    const location = useLocation();
+    const params = useParams();
+    const { push } = useHistory();
 
     useEffect(() => {
+
+      if(location.state) {
+        setItem(location.state);
+      } else {
+        axios
+          .get(`http://localhost:3333/api/movies/${params.id}`)
+          .then((res) => {
+            setItem(res.data);
+          })
+          .catch((err) => console.log(err));
+        }
+    }, [location.state, params.id]);
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+
       axios
-        .get(`http://localhost:3333/api/movies/${id}`)
+        .put(`http://localhost:3333/api/movies/${params.id}`)
         .then((res) => {
-          setItem(res.data);
+          const newMovie = props.movieList.filter((item) => item.id !== item.params);
+          props.setMovieList(newMovie);
+          push('/');
         })
         .catch((err) => console.log(err));
-    }, [id]);
+    };
   
     const onChange = (e) => {
-      e.persist();
-      let value = e.target.value;
-      if (e.target.name === "stars") {
-        value = parseInt(value, 10);
-      }
+      let value = e.target.value === 'stars' ? e.target.value.split(',') : e.target.value;
   
       setItem({
         ...item,
         [e.target.name]: value
       });
-    };
-  
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      axios
-        .put(`http://localhost:3333/movies/${id}`, item)
-        .then((res) => {
-          console.log(res);
-          props.setItems(res.data);
-          push(`/update-movie/${id}`);
-        })
-        .catch((err) => console.log(err));
     };
 
     return (
@@ -83,12 +85,10 @@ function UpdateMovie(props) {
                         id="stars"
                         name="stars"
                         onChange={onChange}
-                        value={item.stars}
+                        value={item.stars.join(',')}
                     />
 
                 <button>Submit Update</button>
         </form>
     )
 }
-
-export default UpdateMovie;
